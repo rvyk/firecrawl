@@ -1,10 +1,6 @@
 import { parseApi } from "../lib/parseApi";
 import { getRateLimiter } from "../services/rate-limiter";
-import {
-  AuthResponse,
-  NotificationType,
-  RateLimiterMode,
-} from "../types";
+import { AuthResponse, NotificationType, RateLimiterMode } from "../types";
 import { supabase_rr_service, supabase_service } from "../services/supabase";
 import { withAuth } from "../lib/withAuth";
 import { RateLimiterRedis } from "rate-limiter-flexible";
@@ -72,7 +68,10 @@ export async function setCachedACUC(
   }
 }
 
-const mockPreviewACUC: (team_id: string, is_extract: boolean) => AuthCreditUsageChunk = (team_id, is_extract) => ({
+const mockPreviewACUC: (
+  team_id: string,
+  is_extract: boolean,
+) => AuthCreditUsageChunk = (team_id, is_extract) => ({
   api_key: "preview",
   team_id,
   sub_id: null,
@@ -111,7 +110,9 @@ const mockACUC: () => AuthCreditUsageChunk = () => ({
   team_id: "bypass",
   sub_id: "bypass",
   sub_current_period_start: new Date().toISOString(),
-  sub_current_period_end: new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  sub_current_period_end: new Date(
+    new Date().getTime() + 30 * 24 * 60 * 60 * 1000,
+  ).toISOString(),
   sub_user_id: "bypass",
   price_id: "bypass",
   rate_limits: {
@@ -147,16 +148,16 @@ export async function getACUC(
   mode?: RateLimiterMode,
 ): Promise<AuthCreditUsageChunk | null> {
   let isExtract =
-      mode === RateLimiterMode.Extract ||
-      mode === RateLimiterMode.ExtractStatus ||
-      mode === RateLimiterMode.ExtractAgentPreview;
+    mode === RateLimiterMode.Extract ||
+    mode === RateLimiterMode.ExtractStatus ||
+    mode === RateLimiterMode.ExtractAgentPreview;
 
   if (api_key === process.env.PREVIEW_TOKEN) {
     const acuc = mockPreviewACUC(api_key, isExtract);
     acuc.is_extract = isExtract;
     return acuc;
   }
-  
+
   if (process.env.USE_DB_AUTHENTICATION !== "true") {
     const acuc = mockACUC();
     acuc.is_extract = isExtract;
@@ -179,10 +180,14 @@ export async function getACUC(
     const maxRetries = 5;
     while (retries < maxRetries) {
       const client =
-        Math.random() > (2/3) ? supabase_rr_service : supabase_service;
+        Math.random() > 2 / 3 ? supabase_rr_service : supabase_service;
       ({ data, error } = await client.rpc(
         "auth_credit_usage_chunk_30",
-        { input_key: api_key, i_is_extract: isExtract, tally_untallied_credits: true },
+        {
+          input_key: api_key,
+          i_is_extract: isExtract,
+          tally_untallied_credits: true,
+        },
         { get: true },
       ));
 
@@ -192,7 +197,7 @@ export async function getACUC(
 
       logger.warn(
         `Failed to retrieve authentication and credit usage data after ${retries}, trying again...`,
-        { error }
+        { error },
       );
       retries++;
       if (retries === maxRetries) {
@@ -226,7 +231,9 @@ export async function setCachedACUCTeam(
   acuc:
     | AuthCreditUsageChunkFromTeam
     | null
-    | ((acuc: AuthCreditUsageChunkFromTeam) => AuthCreditUsageChunkFromTeam | null),
+    | ((
+        acuc: AuthCreditUsageChunkFromTeam,
+      ) => AuthCreditUsageChunkFromTeam | null),
 ) {
   const cacheKeyACUC = `acuc_team_${team_id}_${is_extract ? "extract" : "scrape"}`;
   const redLockKey = `lock_${cacheKeyACUC}`;
@@ -264,15 +271,15 @@ export async function getACUCTeam(
   mode?: RateLimiterMode,
 ): Promise<AuthCreditUsageChunkFromTeam | null> {
   let isExtract =
-      mode === RateLimiterMode.Extract ||
-      mode === RateLimiterMode.ExtractStatus ||
-      mode === RateLimiterMode.ExtractAgentPreview;
+    mode === RateLimiterMode.Extract ||
+    mode === RateLimiterMode.ExtractStatus ||
+    mode === RateLimiterMode.ExtractAgentPreview;
 
   if (team_id.startsWith("preview")) {
     const acuc = mockPreviewACUC(team_id, isExtract);
     return acuc;
   }
-  
+
   if (process.env.USE_DB_AUTHENTICATION !== "true") {
     const acuc = mockACUC();
     acuc.is_extract = isExtract;
@@ -293,13 +300,17 @@ export async function getACUCTeam(
     let error;
     let retries = 0;
     const maxRetries = 5;
-    
+
     while (retries < maxRetries) {
       const client =
-        Math.random() > (2/3) ? supabase_rr_service : supabase_service;
+        Math.random() > 2 / 3 ? supabase_rr_service : supabase_service;
       ({ data, error } = await client.rpc(
         "auth_credit_usage_chunk_30_from_team",
-        { input_team: team_id, i_is_extract: isExtract, tally_untallied_credits: true },
+        {
+          input_team: team_id,
+          i_is_extract: isExtract,
+          tally_untallied_credits: true,
+        },
         { get: true },
       ));
 
@@ -309,7 +320,7 @@ export async function getACUCTeam(
 
       logger.warn(
         `Failed to retrieve authentication and credit usage data after ${retries}, trying again...`,
-        { error }
+        { error },
       );
       retries++;
       if (retries === maxRetries) {
@@ -382,15 +393,45 @@ export async function supaAuthenticateUser(
   res,
   mode?: RateLimiterMode,
 ): Promise<AuthResponse> {
+  const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
   const authHeader =
     req.headers.authorization ??
     (req.headers["sec-websocket-protocol"]
       ? `Bearer ${req.headers["sec-websocket-protocol"]}`
       : null);
-  if (!authHeader) {
-    return { success: false, error: "Unauthorized", status: 401 };
+
+  const token = authHeader ? authHeader.split(" ")[1] : null; // Extract the token from "Bearer <token>"
+
+  // Scenario 2: USE_DB_AUTHENTICATION=false and API_KEY is set - check key match
+  // Important: In this scenario, we never connect to the database
+  if (!useDbAuthentication && process.env.API_KEY) {
+    if (!token) {
+      return {
+        success: false,
+        error: "Unauthorized: Token missing",
+        status: 401,
+      };
+    }
+
+    if (token !== process.env.API_KEY) {
+      return {
+        success: false,
+        error: "Unauthorized: API key is not valid",
+        status: 401,
+      };
+    }
+
+    // Return bypass - no database connection needed
+    return {
+      success: true,
+      chunk: null,
+      team_id: "bypass",
+    };
   }
-  const token = authHeader.split(" ")[1]; // Extract the token from "Bearer <token>"
+
+  // From this point, we only handle Scenario 3: USE_DB_AUTHENTICATION=true
+  // All database-related authentication happens below this line
+
   if (!token) {
     return {
       success: false,
@@ -399,33 +440,35 @@ export async function supaAuthenticateUser(
     };
   }
 
-  const incomingIP = (req.headers["x-preview-ip"] || req.headers["x-forwarded-for"] ||
+  const incomingIP = (req.headers["x-preview-ip"] ||
+    req.headers["x-forwarded-for"] ||
     req.socket.remoteAddress) as string;
   const iptoken = incomingIP + token;
 
   let rateLimiter: RateLimiterRedis;
-  let subscriptionData: { team_id: string} | null = null;
-  let normalizedApi: string;
-
   let teamId: string | null = null;
   let priceId: string | null = null;
   let chunk: AuthCreditUsageChunk | null = null;
-  if (token == "this_is_just_a_preview_token") {
-    throw new Error(
-      "Unauthenticated Playground calls are temporarily disabled due to abuse. Please sign up.",
-    );
-  }
-  if (token == process.env.PREVIEW_TOKEN) {
-    if (mode == RateLimiterMode.CrawlStatus) {
+
+  // Handle preview token
+  if (token === process.env.PREVIEW_TOKEN) {
+    if (token == "this_is_just_a_preview_token") {
+      throw new Error(
+        "Unauthenticated Playground calls are temporarily disabled due to abuse. Please sign up.",
+      );
+    }
+
+    if (mode === RateLimiterMode.CrawlStatus) {
       rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
-    } else if (mode == RateLimiterMode.ExtractStatus) {
+    } else if (mode === RateLimiterMode.ExtractStatus) {
       rateLimiter = getRateLimiter(RateLimiterMode.ExtractStatus, token);
     } else {
       rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
     }
     teamId = `preview_${iptoken}`;
   } else {
-    normalizedApi = parseApi(token);
+    // Check regular API token
+    const normalizedApi = parseApi(token);
     if (!normalizedApiIsUuid(normalizedApi)) {
       return {
         success: false,
@@ -446,10 +489,6 @@ export async function supaAuthenticateUser(
 
     teamId = chunk.team_id;
     priceId = chunk.price_id;
-
-    subscriptionData = {
-      team_id: teamId,
-    };
     rateLimiter = getRateLimiter(
       mode ?? RateLimiterMode.Crawl,
       chunk.rate_limits,
@@ -459,6 +498,7 @@ export async function supaAuthenticateUser(
   const team_endpoint_token =
     token === process.env.PREVIEW_TOKEN ? iptoken : teamId;
 
+  // Handle rate limits
   try {
     await rateLimiter.consume(team_endpoint_token);
   } catch (rateLimiterRes) {
@@ -472,13 +512,6 @@ export async function supaAuthenticateUser(
     const secs = Math.round(rateLimiterRes.msBeforeNext / 1000) || 1;
     const retryDate = new Date(Date.now() + rateLimiterRes.msBeforeNext);
 
-    // We can only send a rate limit email every 7 days, send notification already has the date in between checking
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 7);
-
-    // await sendNotification(team_id, NotificationType.RATE_LIMIT_REACHED, startDate.toISOString(), endDate.toISOString());
-
     return {
       success: false,
       error: `Rate limit exceeded. Consumed (req/min): ${rateLimiterRes.consumedPoints}, Remaining (req/min): ${rateLimiterRes.remainingPoints}. Upgrade your plan at https://firecrawl.dev/pricing for increased rate limits or please retry after ${secs}s, resets at ${retryDate}`,
@@ -486,6 +519,7 @@ export async function supaAuthenticateUser(
     };
   }
 
+  // Additional check for preview token
   if (
     token === process.env.PREVIEW_TOKEN &&
     (mode === RateLimiterMode.Scrape ||
@@ -501,16 +535,6 @@ export async function supaAuthenticateUser(
       team_id: `preview_${iptoken}`,
       chunk: null,
     };
-    // check the origin of the request and make sure its from firecrawl.dev
-    // const origin = req.headers.origin;
-    // if (origin && origin.includes("firecrawl.dev")){
-    //   return { success: true, team_id: "preview" };
-    // }
-    // if(process.env.ENV !== "production") {
-    //   return { success: true, team_id: "preview" };
-    // }
-
-    // return { success: false, error: "Unauthorized: Invalid token", status: 401 };
   }
 
   return {

@@ -23,13 +23,27 @@ export async function billTeam(
   logger?: Logger,
   is_extract: boolean = false,
 ) {
+  // If team_id is "bypass", it means we're using API_KEY authentication
+  // and should bypass billing completely
+  if (team_id === "bypass") {
+    return {
+      success: true,
+      message: "API key authentication, bypassing billing",
+    };
+  }
+
   // Maintain the withAuth wrapper for authentication
   return withAuth(
     async (team_id, subscription_id, credits, logger, is_extract) => {
       // Within the authenticated context, queue the billing operation
-      return queueBillingOperation(team_id, subscription_id, credits, is_extract);
-    }, 
-    { success: true, message: "No DB, bypassed." }
+      return queueBillingOperation(
+        team_id,
+        subscription_id,
+        credits,
+        is_extract,
+      );
+    },
+    { success: true, message: "No DB, bypassed." },
   )(team_id, subscription_id, credits, logger, is_extract);
 }
 
@@ -50,11 +64,15 @@ export async function supaBillTeam(
     credits,
   });
 
-  _logger.warn("supaBillTeam was called directly. This function is deprecated and should only be called from batch_billing.ts");
-  queueBillingOperation(team_id, subscription_id, credits, is_extract).catch((err) => {
-    _logger.error("Error queuing billing operation", { err });
-    Sentry.captureException(err);
-  });
+  _logger.warn(
+    "supaBillTeam was called directly. This function is deprecated and should only be called from batch_billing.ts",
+  );
+  queueBillingOperation(team_id, subscription_id, credits, is_extract).catch(
+    (err) => {
+      _logger.error("Error queuing billing operation", { err });
+      Sentry.captureException(err);
+    },
+  );
   // Forward to the batch billing system
   return {
     success: true,
@@ -74,6 +92,16 @@ export async function checkTeamCredits(
   team_id: string,
   credits: number,
 ): Promise<CheckTeamCreditsResponse> {
+  // If chunk is null and team_id is "bypass", it means we're using API_KEY authentication
+  // and should bypass the credit check completely
+  if (team_id === "bypass") {
+    return {
+      success: true,
+      message: "API key authentication, bypassing credit check",
+      remainingCredits: Infinity,
+    };
+  }
+
   return withAuth(supaCheckTeamCredits, {
     success: true,
     message: "No DB, bypassed",

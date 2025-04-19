@@ -23,8 +23,8 @@ x-common-env: &common-env
   OPENAI_API_KEY: ${OPENAI_API_KEY}
   OPENAI_BASE_URL: ${OPENAI_BASE_URL}
   MODEL_NAME: ${MODEL_NAME}
-  MODEL_EMBEDDING_NAME: ${MODEL_EMBEDDING_NAME} 
-  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL} 
+  MODEL_EMBEDDING_NAME: ${MODEL_EMBEDDING_NAME}
+  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
   SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
   BULL_AUTH_KEY: ${BULL_AUTH_KEY}
   TEST_API_KEY: ${TEST_API_KEY}
@@ -45,7 +45,7 @@ x-common-env: &common-env
   SEARXNG_ENDPOINT: ${SEARXNG_ENDPOINT}
   SEARXNG_ENGINES: ${SEARXNG_ENGINES}
   SEARXNG_CATEGORIES: ${SEARXNG_CATEGORIES}
-  PREVIEW_TOKEN: ${PREVIEW_TOKEN}
+  API_KEY: ${API_KEY}
 
 services:
   playwright-service:
@@ -71,7 +71,7 @@ services:
       - playwright-service
     ports:
       - "${PORT:-3002}:${INTERNAL_PORT:-3002}"
-    command: [ "pnpm", "run", "start:production" ]
+    command: ["pnpm", "run", "start:production"]
 
   worker:
     <<: *common-service
@@ -82,7 +82,7 @@ services:
       - redis
       - playwright-service
       - api
-    command: [ "pnpm", "run", "workers" ]
+    command: ["pnpm", "run", "workers"]
 
   redis:
     # NOTE: If you want to use Valkey (open source) instead of Redis (source available),
