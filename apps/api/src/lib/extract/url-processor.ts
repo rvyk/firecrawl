@@ -11,7 +11,10 @@ import { getModel } from "../generic-ai";
 import { calculateCost } from "../../scraper/scrapeURL/transformers/llmExtract";
 import type { CostTracking } from "./extraction-service";
 
-export async function generateBasicCompletion(prompt: string, costTracking: CostTracking): Promise<{ text: string } | null> {
+export async function generateBasicCompletion(
+  prompt: string,
+  costTracking: CostTracking,
+): Promise<{ text: string } | null> {
   try {
     const result = await generateText({
       model: getModel("gpt-4o", "openai"),
@@ -20,7 +23,7 @@ export async function generateBasicCompletion(prompt: string, costTracking: Cost
         anthropic: {
           thinking: { type: "enabled", budgetTokens: 12000 },
         },
-      }
+      },
     });
     costTracking.addCall({
       type: "other",
@@ -29,7 +32,11 @@ export async function generateBasicCompletion(prompt: string, costTracking: Cost
         method: "generateBasicCompletion",
       },
       model: "openai/gpt-4o",
-      cost: calculateCost("openai/gpt-4o", result.usage?.promptTokens ?? 0, result.usage?.completionTokens ?? 0),
+      cost: calculateCost(
+        "openai/gpt-4o",
+        result.usage?.promptTokens ?? 0,
+        result.usage?.completionTokens ?? 0,
+      ),
       tokens: {
         input: result.usage?.promptTokens ?? 0,
         output: result.usage?.completionTokens ?? 0,
@@ -41,13 +48,13 @@ export async function generateBasicCompletion(prompt: string, costTracking: Cost
     if (error?.type == "rate_limit_error") {
       try {
         const result = await generateText({
-          model: getModel("gpt-4o-mini", "openai"), 
+          model: getModel("gpt-4o-mini", "openai"),
           prompt: prompt,
           providerOptions: {
             anthropic: {
               thinking: { type: "enabled", budgetTokens: 12000 },
             },
-          }
+          },
         });
         costTracking.addCall({
           type: "other",
@@ -56,7 +63,11 @@ export async function generateBasicCompletion(prompt: string, costTracking: Cost
             method: "generateBasicCompletion",
           },
           model: "openai/gpt-4o-mini",
-          cost: calculateCost("openai/gpt-4o-mini", result.usage?.promptTokens ?? 0, result.usage?.completionTokens ?? 0),
+          cost: calculateCost(
+            "openai/gpt-4o-mini",
+            result.usage?.promptTokens ?? 0,
+            result.usage?.completionTokens ?? 0,
+          ),
           tokens: {
             input: result.usage?.promptTokens ?? 0,
             output: result.usage?.completionTokens ?? 0,
@@ -64,7 +75,10 @@ export async function generateBasicCompletion(prompt: string, costTracking: Cost
         });
         return { text: result.text };
       } catch (fallbackError) {
-        console.error("Error generating basic completion with fallback model:", fallbackError);
+        console.error(
+          "Error generating basic completion with fallback model:",
+          fallbackError,
+        );
         return null;
       }
     }
@@ -126,7 +140,8 @@ export async function processUrl(
     );
 
     if (res) {
-      searchQuery = res.text.replace('"', "").replace("/", "") ?? options.prompt;
+      searchQuery =
+        res.text.replace('"', "").replace("/", "") ?? options.prompt;
     }
   }
 

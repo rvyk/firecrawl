@@ -298,7 +298,7 @@ export async function generateCompletions({
           tokens: {
             input: result.usage?.promptTokens ?? 0,
             output: result.usage?.completionTokens ?? 0,
-          }
+          },
         });
 
         extract = result.text;
@@ -310,7 +310,9 @@ export async function generateCompletions({
           totalUsage: {
             promptTokens: result.usage?.promptTokens ?? 0,
             completionTokens: result.usage?.completionTokens ?? 0,
-            totalTokens: result.usage?.promptTokens ?? 0 + (result.usage?.completionTokens ?? 0),
+            totalTokens:
+              result.usage?.promptTokens ??
+              0 + (result.usage?.completionTokens ?? 0),
           },
           model: currentModel.modelId,
         };
@@ -354,7 +356,7 @@ export async function generateCompletions({
               tokens: {
                 input: result.usage?.promptTokens ?? 0,
                 output: result.usage?.completionTokens ?? 0,
-              }
+              },
             });
 
             return {
@@ -364,7 +366,9 @@ export async function generateCompletions({
               totalUsage: {
                 promptTokens: result.usage?.promptTokens ?? 0,
                 completionTokens: result.usage?.completionTokens ?? 0,
-                totalTokens: result.usage?.promptTokens ?? 0 + (result.usage?.completionTokens ?? 0),
+                totalTokens:
+                  result.usage?.promptTokens ??
+                  0 + (result.usage?.completionTokens ?? 0),
               },
               model: currentModel.modelId,
             };
@@ -417,7 +421,11 @@ export async function generateCompletions({
     const repairConfig = {
       experimental_repairText: async ({ text, error }) => {
         // AI may output a markdown JSON code block. Remove it - mogery
-        logger.debug("Repairing text", { textType: typeof text, textPeek: JSON.stringify(text).slice(0, 100) + "...", error });
+        logger.debug("Repairing text", {
+          textType: typeof text,
+          textPeek: JSON.stringify(text).slice(0, 100) + "...",
+          error,
+        });
 
         if (typeof text === "string" && text.trim().startsWith("```")) {
           if (text.trim().startsWith("```json")) {
@@ -436,7 +444,9 @@ export async function generateCompletions({
             logger.debug("Repaired text with string manipulation");
             return text;
           } catch (e) {
-            logger.error("Even after repairing, failed to parse JSON", { error: e });
+            logger.error("Even after repairing, failed to parse JSON", {
+              error: e,
+            });
           }
         }
 
@@ -504,11 +514,15 @@ export async function generateCompletions({
     //   JSON.stringify(generateObjectConfig, null, 2),
     // );
 
-    logger.debug("Generating object...", { generateObjectConfig: {
-      ...generateObjectConfig,
-      prompt: generateObjectConfig.prompt.slice(0, 100) + "...",
-      system: generateObjectConfig.system?.slice(0, 100) + "...",
-    }, model, retryModel });
+    logger.debug("Generating object...", {
+      generateObjectConfig: {
+        ...generateObjectConfig,
+        prompt: generateObjectConfig.prompt.slice(0, 100) + "...",
+        system: generateObjectConfig.system?.slice(0, 100) + "...",
+      },
+      model,
+      retryModel,
+    });
 
     let result: { object: any; usage: TokenUsage } | undefined;
     try {
@@ -691,7 +705,8 @@ export async function performLLMExtract(
       });
 
     if (warning) {
-      document.warning = warning + (document.warning ? " " + document.warning : "");
+      document.warning =
+        warning + (document.warning ? " " + document.warning : "");
     }
 
     // IMPORTANT: here it only get's the last page!!!

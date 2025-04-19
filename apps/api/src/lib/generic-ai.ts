@@ -38,15 +38,22 @@ const providerList: Record<Provider, any> = {
   vertex: createVertex({
     project: "firecrawl",
     location: "us-central1",
-    googleAuthOptions: process.env.VERTEX_CREDENTIALS ? {
-      credentials: JSON.parse(atob(process.env.VERTEX_CREDENTIALS)),
-    } : {
-      keyFile: "./gke-key.json",
-    },
+    googleAuthOptions: process.env.VERTEX_CREDENTIALS
+      ? {
+          credentials: JSON.parse(atob(process.env.VERTEX_CREDENTIALS)),
+        }
+      : {
+          keyFile: "./gke-key.json",
+        },
   }),
 };
 
 export function getModel(name: string, provider: Provider = defaultProvider) {
+  // If the provider is openai and the openrouter api key is set, use openrouter
+  if (provider === "openai" && process.env.OPENROUTER_API_KEY) {
+    provider = "openrouter";
+  }
+
   return process.env.MODEL_NAME
     ? providerList[provider](process.env.MODEL_NAME)
     : providerList[provider](name);
